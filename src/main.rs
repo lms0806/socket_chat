@@ -8,7 +8,7 @@ use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as C
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::text::{Span, Spans};
+use ratatui::text::{Span, Line};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Terminal;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -170,20 +170,30 @@ fn ui_loop(
         }
 
         terminal.draw(|f| {
-            let size = f.size();
+            let size = f.area();
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
                 .split(size);
 
-            let text: Vec<Spans> = messages.iter().rev().take(1000).rev().map(|m| Spans::from(Span::raw(m.clone()))).collect();
+            // messages를 Line 벡터로 변환
+            let text: Vec<Line> = messages
+                .iter()
+                .rev()
+                .take(1000)
+                .rev()
+                .map(|m| Line::from(Span::raw(m.clone())))
+                .collect();
+
             let messages_block = Paragraph::new(text)
                 .block(Block::default().borders(Borders::ALL).title("Messages"))
                 .wrap(Wrap { trim: false });
 
+            // input도 Line으로 감싸기
             let input_block = Paragraph::new(vec![
-                Spans::from(Span::raw(input.as_str()))
-            ]);
+                Line::from(Span::raw(input.as_str()))
+            ])
+                .block(Block::default().borders(Borders::ALL).title(format!("Type and press Enter ({})", my_name)));
 
             f.render_widget(messages_block, chunks[0]);
             f.render_widget(input_block, chunks[1]);
